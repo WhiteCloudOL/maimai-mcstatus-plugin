@@ -1,0 +1,43 @@
+{
+  "manifest_version": 2,
+  "version": "1.0.0",
+  "name": "Minecraft 服务器状态查询",
+  "description": "查询 Minecraft 服务器状态，支持 MOTD、在线人数、延迟等，并生成精美的卡片图片",
+  "author": {
+    "name": "WhiteCloudCN",
+    "url": "https://github.com/WhiteCloudOL"
+  },
+  "license": "GPL-v3.0-or-later",
+  "urls": {
+    "repository": "https://github.com/WhiteCloudOL/astrbot_plugin_mcstatus",
+    "homepage": "https://github.com/WhiteCloudOL/astrbot_plugin_mcstatus"
+  },
+  "host_application": {
+    "min_version": "1.0.0",
+    "max_version": "1.99.99"
+  },
+  "sdk": {
+    "min_version": "2.0.0",
+    "max_version": "2.99.99"
+  },
+  "dependencies": [
+    {
+      "type": "python_package",
+      "name": "mcstatus",
+      "version_spec": ">=12.0.0"
+    },
+    {
+      "type": "python_package",
+      "name": "pillow",
+      "version_spec": ">=9.0.0"
+    }
+  ],
+  "capabilities": [
+    "send.text",
+    "send.image"
+  ],
+  "i18n": {
+    "default_locale": "zh-CN"
+  },
+  "id": "maimai-team.maimai-mcstatus-plugin"
+}

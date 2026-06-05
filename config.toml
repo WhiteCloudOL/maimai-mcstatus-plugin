@@ -1,0 +1,11 @@
+[plugin]
+enabled = true
+config_version = "1.0.0"
+
+[draw]
+font = "cute_font.ttf"
+bg = "bg.jpg"
+max_temp = 5
+
+[data]
+divide_data = false
