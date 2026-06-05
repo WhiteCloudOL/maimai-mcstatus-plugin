@@ -21,12 +21,7 @@
 
 ## 🛠️ 安装方法  
 
-### 🔹 方式一：maibot CLI 安装（推荐）
-```bash
-maibot plugin install WhiteCloudOL/maimai-mcstatus-plugin
-```
-
-### 🔹 方式二：Git Clone
+### 🔹 方式一：Git Clone
 确保系统已安装 Git，在 `MaiBot/plugins/` 目录下打开终端，执行以下命令：
 ```bash
 # 全球/海外/港澳台
@@ -36,6 +31,14 @@ git clone https://github.com/WhiteCloudOL/maimai-mcstatus-plugin.git
 git clone https://gh-proxy.com/https://github.com/WhiteCloudOL/maimai-mcstatus-plugin.git
 ```
 完成后重启 MaiBot 即可载入插件。
+
+### 🔹 方式二：maibot CLI 安装
+> 非官方安装方式
+> 仅支持Linux x86_64/ARM64：https://github.com/WhiteCloudOL/MaiBot-Manager-TUI
+
+```bash
+maibot plugin install WhiteCloudOL/maimai-mcstatus-plugin
+```
 
 ---
 
