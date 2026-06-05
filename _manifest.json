@@ -7,10 +7,10 @@
     "name": "WhiteCloudCN",
     "url": "https://github.com/WhiteCloudOL"
   },
-  "license": "GPL-v3.0-or-later",
+  "license": "AGPL-v3.0-or-later",
   "urls": {
-    "repository": "https://github.com/WhiteCloudOL/astrbot_plugin_mcstatus",
-    "homepage": "https://github.com/WhiteCloudOL/astrbot_plugin_mcstatus"
+    "repository": "https://github.com/WhiteCloudOL/maimai-mcstatus-plugin",
+    "homepage": "https://github.com/WhiteCloudOL/maimai-mcstatus-plugin"
   },
   "host_application": {
     "min_version": "1.0.0",
