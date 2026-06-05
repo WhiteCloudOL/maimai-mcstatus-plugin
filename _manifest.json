@@ -4,10 +4,10 @@
   "name": "Minecraft 服务器状态查询",
   "description": "查询 Minecraft 服务器状态，支持 MOTD、在线人数、延迟等，并生成精美的卡片图片",
   "author": {
-    "name": "WhiteCloudCN",
+    "name": "清蒸云鸭",
     "url": "https://github.com/WhiteCloudOL"
   },
-  "license": "AGPL-v3.0-or-later",
+  "license": "AGPL-3.0",
   "urls": {
     "repository": "https://github.com/WhiteCloudOL/maimai-mcstatus-plugin",
     "homepage": "https://github.com/WhiteCloudOL/maimai-mcstatus-plugin"
