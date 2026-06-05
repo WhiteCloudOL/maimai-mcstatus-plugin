@@ -97,19 +97,32 @@ class MCStatusPlugin(MaiBotPlugin):
     @Command(
         "mcstatus",
         description="Minecraft 服务器状态查询",
-        pattern=r"^/mcs(?:status)?\s*(?P<subcommand>\w*)\s*(?P<arg1>\S*)\s*(?P<arg2>.*)",
+        pattern=r"^/(?:mcstatus|mcs)\s*(?P<args>.*)",
     )
     async def handle_mcstatus(self, stream_id: str = "", **kwargs: Any) -> tuple[bool, str, int]:
         """MCStatus 主命令处理"""
+        # 从 matched_groups 提取参数
         matched_groups = kwargs.get("matched_groups", {})
         if not isinstance(matched_groups, dict):
             matched_groups = {}
 
-        subcommand = str(matched_groups.get("subcommand", "")).strip()
-        arg1 = str(matched_groups.get("arg1", "")).strip()
-        arg2 = str(matched_groups.get("arg2", "")).strip()
+        raw_args = str(matched_groups.get("args") or "").strip()
 
-        # 获取 user_id 和 group_id（如果有的话）
+        # fallback: 从 kwargs["text"] 直接解析
+        if not raw_args:
+            raw_text = str(kwargs.get("text") or "").strip()
+            import re as _re
+            _m = _re.match(r"^/(?:mcstatus|mcs)\s*(?P<args>.*)", raw_text, _re.DOTALL)
+            if _m:
+                raw_args = _m.group("args").strip()
+
+        # 解析子命令和参数
+        parts = raw_args.split(None, 2) if raw_args else []
+        subcommand = parts[0] if len(parts) > 0 else ""
+        arg1 = parts[1] if len(parts) > 1 else ""
+        arg2 = parts[2] if len(parts) > 2 else ""
+
+        # 获取 user_id 和 group_id
         user_id = str(kwargs.get("user_id", ""))
         group_id = str(kwargs.get("group_id", ""))
 
