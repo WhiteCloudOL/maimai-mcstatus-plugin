@@ -411,10 +411,10 @@ class Draw:
     async def draw_card(self, data_map: dict, seted_font_name: str) -> tuple[bool, str]:
         try:
             loop = asyncio.get_event_loop()
-            W, H = self.CARD_WIDTH, self.CARD_HEIGHT
+            W = self.CARD_WIDTH
+            margin = 35
 
-            bg, draw, content_x, content_y = await self._init_canvas(W, H, data_map.get("server_icon", ""))
-
+            # --- 字体加载 ---
             font_title = self.get_font(seted_font_name, 42)
             font_motd2 = self.get_font(seted_font_name, 28)
             font_label = self.get_font(seted_font_name, 24)
@@ -422,43 +422,100 @@ class Draw:
             font_small = self.get_font(seted_font_name, 22)
             font_footer = self.get_font(seted_font_name, 18)
 
-            motd_raw = data_map.get("motd_raw", "Unknown Server")
-            motd_lines = motd_raw.split("\n")
-            self.draw_colored_text(draw, (content_x, content_y), motd_lines[0], font_title)
-            if len(motd_lines) > 1:
-                self.draw_colored_text(draw, (content_x, content_y + 55), motd_lines[1], font_motd2)
+            # --- 用于测量文本尺寸的临时绘制上下文 ---
+            temp_img = Image.new("RGBA", (W, 100))
+            temp_draw = ImageDraw.Draw(temp_img)
 
-            grid_y = content_y + 120
+            def _text_height(font) -> int:
+                """获取单行文本高度"""
+                bbox = temp_draw.textbbox((0, 0), "Ay", font=font)
+                return bbox[3] - bbox[1]
+
+            def _text_width(text: str, font) -> int:
+                """获取文本像素宽度"""
+                bbox = temp_draw.textbbox((0, 0), text, font=font)
+                return bbox[2] - bbox[0]
+
+            # --- 按像素宽度自动换行，最多 max_lines 行 ---
+            def wrap_value_to_lines(text: str, font, max_w: int, max_lines: int = 2) -> list[str]:
+                """将文本按像素宽度自动换行，最多 max_lines 行，超出截断加 '...'"""
+                if not text:
+                    return [""]
+                lines: list[str] = []
+                current_line = ""
+                for char in text:
+                    test_line = current_line + char
+                    if _text_width(test_line, font) > max_w and current_line:
+                        lines.append(current_line)
+                        current_line = char
+                        if len(lines) >= max_lines:
+                            # 已达最大行数，截断最后一行并加 "..."
+                            last = lines[-1]
+                            ellipsis_w = _text_width("...", font)
+                            while last and _text_width(last, font) + ellipsis_w > max_w:
+                                last = last[:-1]
+                            lines[-1] = (last + "...") if last else "..."
+                            return lines
+                    else:
+                        current_line = test_line
+                if current_line:
+                    lines.append(current_line)
+                # 超过 max_lines 行时截断
+                if len(lines) > max_lines:
+                    keep = lines[:max_lines - 1]
+                    last = lines[max_lines - 1]
+                    ellipsis_w = _text_width("...", font)
+                    while last and _text_width(last, font) + ellipsis_w > max_w:
+                        last = last[:-1]
+                    keep.append((last + "...") if last else "...")
+                    return keep
+                return lines
+
+            # --- 测量单个字段需要的总高度 ---
             col_gap = 240
+            field_value_max_w = col_gap - 30  # 每个字段值的最大像素宽度
 
-            def draw_field(x, y, label_text, value_text, label_pill_color=None, value_color=None, max_len=0):
-                bg_col = label_pill_color if label_pill_color else self.CUTE_THEME["pill_pink"]
-                self.draw_cute_label(draw, x, y, label_text, font_label, bg_col)
-                val_str = str(value_text)
-                fill_col = value_color if value_color else self.CUTE_THEME["text_main"]
-                start_y = y + 38
-                if max_len > 0 and len(val_str) > max_len:
-                    bbox = font_val.getbbox("Ay")
-                    line_height = (bbox[3] - bbox[0]) + 5
-                    for i in range(0, len(val_str), max_len):
-                        chunk = val_str[i:i + max_len]
-                        draw.text((x + 5, start_y), chunk, font=font_val, fill=fill_col)
-                        start_y += line_height
-                else:
-                    draw.text((x + 5, start_y), val_str, font=font_val, fill=fill_col)
+            def measure_field(label_text: str, value_text: str) -> int:
+                """测量单个字段（标签+值）需要的总高度"""
+                label_h = _text_height(font_label) + 8  # pill 文字高度 + padding
+                gap = 8  # 标签与值之间的间距
+                val_lines = wrap_value_to_lines(str(value_text), font_val, field_value_max_w, 2)
+                val_line_h = _text_height(font_val) + 5  # 行高 + 行间距
+                val_h = len(val_lines) * val_line_h
+                return label_h + gap + val_h
 
-            draw_field(content_x, grid_y, "地址", data_map.get("addr", "Unknown"), max_len=10)
-            draw_field(content_x + col_gap, grid_y, "版本", data_map.get("version", "Unknown"),
-                       label_pill_color=self.CUTE_THEME["pill_blue"],
-                       value_color=self.CUTE_THEME["pill_text_blue"])
-            draw_field(content_x + col_gap * 2, grid_y, "协议", data_map.get("protocol", "?"))
-            latency = data_map.get("latency", 0)
-            lat_color = self.CUTE_THEME["ping_good"] if latency < 100 else (self.CUTE_THEME["ping_mid"] if latency < 200 else self.CUTE_THEME["ping_bad"])
-            draw_field(content_x + col_gap * 3, grid_y, "延迟", f"{latency}ms", value_color=lat_color)
+            # ========== 第一步：计算内容总高度 ==========
+            motd_raw = data_map.get("motd_raw", "Unknown Server")
+            motd_lines_raw = motd_raw.split("\n")
 
-            list_y = grid_y + 130
+            # _init_canvas 中 content_y = icon_y + 5 = margin + 50
+            content_y_init = margin + 50
+            y = content_y_init  # 绝对 y 坐标
+
+            # 标题行
+            title_h = _text_height(font_title)
+            y += title_h + 8  # 标题 + 间距
+            if len(motd_lines_raw) > 1:
+                subtitle_h = _text_height(font_motd2)
+                y += subtitle_h + 5  # 副标题 + 间距
+            y += 30  # 标题区域与字段之间间距
+
+            # 字段行（取最高的字段高度）
+            fields_info = [
+                ("地址", data_map.get("addr", "Unknown")),
+                ("版本", data_map.get("version", "Unknown")),
+                ("协议", data_map.get("protocol", "?")),
+                ("延迟", f"{data_map.get('latency', 0)}ms"),
+            ]
+            max_field_h = max(measure_field(lv, vv) for lv, vv in fields_info)
+            y += max_field_h
+            y += 30  # 字段与在线列表之间间距
+
+            # 在线列表
+            y += _text_height(font_label) + 8  # 标签 pill 高度
+            y += 8  # 标签与玩家文本间距
+
             players = data_map.get("players", [])
-            self.draw_cute_label(draw, content_x, list_y, "在线列表", font_label, self.CUTE_THEME["pill_blue"], self.CUTE_THEME["pill_text_blue"])
             display_limit = 4
             if not players:
                 player_str = "当前没有可爱的玩家在线哦~"
@@ -466,31 +523,105 @@ class Draw:
                 player_str = ", ".join(players[:display_limit])
                 if len(players) > display_limit:
                     player_str += f" 等 {len(players)} 人"
-            draw.text((content_x + 5, list_y + 40), player_str, font=font_small, fill=self.CUTE_THEME["text_main"])
 
-            margin = 35
+            max_player_w = W - margin * 2 - 80
+            player_lines = wrap_value_to_lines(player_str, font_small, max_player_w, 2)
+            player_line_h = _text_height(font_small) + 5
+            y += len(player_lines) * player_line_h
+            y += 25  # 在线列表与在线人数之间间距
+
+            # 在线人数文本 + 进度条
             bar_h = 20
-            bar_y = H - margin - 90
-            bar_x = margin + 40
-            bar_w = W - (margin * 2) - 80
+            y += _text_height(font_val) + 5  # "在线人数: X / Y" 文本高度
+            y += bar_h + 10  # 进度条高度 + 间距
 
+            # Footer（两行文字）
+            footer_line_h = _text_height(font_footer) + 5
+            y += footer_line_h * 2 + 5
+
+            # 底部边距
+            H = y + margin
+            H = max(H, 300)  # 最小高度
+
+            # 释放临时图片
+            del temp_img, temp_draw
+
+            # ========== 第二步：创建画布并绘制所有内容 ==========
+            bg, draw, content_x, content_y = await self._init_canvas(W, H, data_map.get("server_icon", ""))
+
+            # 绘制 MOTD 标题
+            self.draw_colored_text(draw, (content_x, content_y), motd_lines_raw[0], font_title)
+            y_cursor = content_y + _text_height(font_title) + 8
+            if len(motd_lines_raw) > 1:
+                self.draw_colored_text(draw, (content_x, y_cursor), motd_lines_raw[1], font_motd2)
+                y_cursor += _text_height(font_motd2) + 5
+            y_cursor += 30  # 标题区域与字段之间间距
+
+            # 绘制字段（支持最多两行像素级换行）
+            def draw_field(x, y, label_text, value_text, label_pill_color=None, value_color=None):
+                """绘制单个字段：标签 pill + 值文本（最多两行）"""
+                bg_col = label_pill_color if label_pill_color else self.CUTE_THEME["pill_pink"]
+                self.draw_cute_label(draw, x, y, label_text, font_label, bg_col)
+                val_str = str(value_text)
+                fill_col = value_color if value_color else self.CUTE_THEME["text_main"]
+                start_y = y + _text_height(font_label) + 8  # 标签下方
+                val_lines = wrap_value_to_lines(val_str, font_val, field_value_max_w, 2)
+                val_line_h = _text_height(font_val) + 5
+                for line in val_lines:
+                    draw.text((x + 5, start_y), line, font=font_val, fill=fill_col)
+                    start_y += val_line_h
+
+            draw_field(content_x, y_cursor, "地址", data_map.get("addr", "Unknown"))
+            draw_field(content_x + col_gap, y_cursor, "版本", data_map.get("version", "Unknown"),
+                       label_pill_color=self.CUTE_THEME["pill_blue"],
+                       value_color=self.CUTE_THEME["pill_text_blue"])
+            draw_field(content_x + col_gap * 2, y_cursor, "协议", data_map.get("protocol", "?"))
+            latency = data_map.get("latency", 0)
+            lat_color = self.CUTE_THEME["ping_good"] if latency < 100 else (
+                self.CUTE_THEME["ping_mid"] if latency < 200 else self.CUTE_THEME["ping_bad"])
+            draw_field(content_x + col_gap * 3, y_cursor, "延迟", f"{latency}ms", value_color=lat_color)
+
+            y_cursor += max_field_h + 30  # 字段行高度 + 间距
+
+            # 绘制在线列表
+            self.draw_cute_label(draw, content_x, y_cursor, "在线列表", font_label,
+                                 self.CUTE_THEME["pill_blue"], self.CUTE_THEME["pill_text_blue"])
+            y_cursor += _text_height(font_label) + 8 + 8  # pill 高度 + 间距
+
+            for line in player_lines:
+                draw.text((content_x + 5, y_cursor), line, font=font_small,
+                          fill=self.CUTE_THEME["text_main"])
+                y_cursor += player_line_h
+
+            y_cursor += 25  # 在线列表与在线人数之间间距
+
+            # 绘制在线人数文本 + 进度条
             online = data_map.get("online", 0)
             max_p = data_map.get("max", 1)
             if max_p == 0:
                 max_p = 1
             ratio = min(online / max_p, 1.0)
 
-            draw.text((bar_x + 5, bar_y - 38), f"在线人数: {online} / {max_p}", font=font_val, fill=self.CUTE_THEME["text_main"])
+            bar_x = margin + 40
+            bar_w = W - (margin * 2) - 80
+            bar_y = y_cursor + _text_height(font_val) + 5  # 在文本下方
+
+            draw.text((bar_x + 5, y_cursor), f"在线人数: {online} / {max_p}",
+                       font=font_val, fill=self.CUTE_THEME["text_main"])
+
             bar_radius = bar_h / 2
             draw.rounded_rectangle((bar_x, bar_y, bar_x + bar_w, bar_y + bar_h),
-                                   radius=bar_radius, fill=self.CUTE_THEME["progress_bg"], outline=self.CUTE_THEME["progress_border"], width=2)
+                                   radius=bar_radius, fill=self.CUTE_THEME["progress_bg"],
+                                   outline=self.CUTE_THEME["progress_border"], width=2)
             if ratio > 0:
                 fill_w = int(bar_w * ratio)
                 fill_w = max(fill_w, bar_h)
                 draw.rounded_rectangle((bar_x, bar_y, bar_x + fill_w, bar_y + bar_h),
                                        radius=bar_radius, fill=self.CUTE_THEME["progress_fill"])
 
-            # 底部信息
+            y_cursor = bar_y + bar_h + 10  # 进度条下方
+
+            # 绘制底部信息
             def draw_right_align(text, y, font, color):
                 bbox = draw.textbbox((0, 0), text, font=font)
                 w = bbox[2] - bbox[0]
@@ -500,9 +631,8 @@ class Draw:
             current_time = datetime.datetime.now().strftime("%Y/%m/%d %H:%M")
             footer_text_1 = f"查询时间：{current_time}"
             footer_text_2 = "maimai-mcstatus-plugin | Design by 清蒸云鸭"
-            footer_base_y = bar_y + 35
-            draw_right_align(footer_text_1, footer_base_y, font_footer, self.CUTE_THEME["text_footer"])
-            draw_right_align(footer_text_2, footer_base_y + 22, font_footer, self.CUTE_THEME["text_footer"])
+            draw_right_align(footer_text_1, y_cursor, font_footer, self.CUTE_THEME["text_footer"])
+            draw_right_align(footer_text_2, y_cursor + footer_line_h, font_footer, self.CUTE_THEME["text_footer"])
 
             await loop.run_in_executor(None, bg.save, self.output_path)
             return True, self.output_path
