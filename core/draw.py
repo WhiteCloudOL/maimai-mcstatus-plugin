@@ -318,6 +318,9 @@ class Draw:
             draw_right_align(footer_text_1, footer_base_y, font_footer, self.CUTE_THEME["text_footer"])
             draw_right_align(footer_text_2, footer_base_y + 25, font_footer, self.CUTE_THEME["text_footer"])
 
+            # 释放临时图片
+            del temp_img, temp_draw
+
             await loop.run_in_executor(None, bg.save, self.output_path)
             return True, self.output_path
 
@@ -398,6 +401,9 @@ class Draw:
             footer_base_y = H - margin - 60
             draw_right_align(footer_text_1, footer_base_y, font_footer, self.CUTE_THEME["text_footer"])
             draw_right_align(footer_text_2, footer_base_y + 25, font_footer, self.CUTE_THEME["text_footer"])
+
+            # 释放临时图片
+            del temp_img, temp_draw
 
             await loop.run_in_executor(None, bg.save, self.output_path)
             return True, self.output_path
@@ -543,9 +549,6 @@ class Draw:
             H = y + margin
             H = max(H, 300)  # 最小高度
 
-            # 释放临时图片
-            del temp_img, temp_draw
-
             # ========== 第二步：创建画布并绘制所有内容 ==========
             bg, draw, content_x, content_y = await self._init_canvas(W, H, data_map.get("server_icon", ""))
 
@@ -633,6 +636,9 @@ class Draw:
             footer_text_2 = "maimai-mcstatus-plugin | Design by 清蒸云鸭"
             draw_right_align(footer_text_1, y_cursor, font_footer, self.CUTE_THEME["text_footer"])
             draw_right_align(footer_text_2, y_cursor + footer_line_h, font_footer, self.CUTE_THEME["text_footer"])
+
+            # 释放临时图片
+            del temp_img, temp_draw
 
             await loop.run_in_executor(None, bg.save, self.output_path)
             return True, self.output_path
