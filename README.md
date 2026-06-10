@@ -3,7 +3,7 @@
 # ✨ MaiBot Plugin - MCStatus ✨
 *一款功能强大且可爱的 Minecraft 服务器状态查询插件*
 
-**当前版本**: `v1.0.0` | **Author**: 清蒸云鸭
+**当前版本**: `v1.0.1` | **Author**: 清蒸云鸭
 
 [![MaiBot Support](https://img.shields.io/badge/MaiBot-Support-blue)](https://github.com/Mai-with-u/MaiBot)
 
