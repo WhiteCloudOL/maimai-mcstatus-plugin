@@ -9,6 +9,10 @@
 
 </div>
 
+> 💌 **遇到问题？有新想法？**  
+> 如果你在使用中遇到问题、想到新功能、或希望优化文档与代码，欢迎在仓库发起 **Issue** 或 **Pull Request**  
+> ☁️另外欢迎加入我们的QQ群：637174573  
+
 ## 🎨 功能预览  
 ✅ **精美渲染**：支持服务器图标渲染、彩色 MOTD 渲染、延迟颜色自适应、进度条展示。  
 ✅ **多功能查询**：支持查询当前在线人数、最大人数、协议版本。  
@@ -21,7 +25,10 @@
 
 ## 🛠️ 安装方法  
 
-### 🔹 方式一：Git Clone
+### 🔹 方式一：插件市场安装（推荐）
+插件市场搜索：Minecraft 服务器状态查询，即可安装完成  
+
+### 🔹 方式二：Git Clone
 确保系统已安装 Git，在 `MaiBot/plugins/` 目录下打开终端，执行以下命令：
 ```bash
 # 全球/海外/港澳台
@@ -34,7 +41,7 @@ git clone https://gh-proxy.com/https://github.com/WhiteCloudOL/maimai-mcstatus-p
 
 ### 🔹 方式二：maibot CLI 安装
 > 非官方安装方式
-> 仅支持Linux x86_64/ARM64：https://github.com/WhiteCloudOL/MaiBot-Manager-TUI
+> 支持Windows/MacOS/Linux多平台：https://github.com/WhiteCloudOL/MaiBot-Manager-TUI
 
 ```bash
 maibot plugin install WhiteCloudOL/maimai-mcstatus-plugin

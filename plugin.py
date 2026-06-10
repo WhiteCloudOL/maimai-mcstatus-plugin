@@ -2,12 +2,11 @@
 
 查询 Minecraft 服务器状态，支持 MOTD、在线人数、延迟等，并生成精美的卡片图片。
 """
-import os
-import base64
 from pathlib import Path
 from typing import Any
-
 from maibot_sdk import Command, Field, MaiBotPlugin, PluginConfigBase
+import base64
+import os
 
 from .core.command_func import CommandFunc
 from .core.data_manager import DataManager
@@ -130,7 +129,7 @@ class MCStatusPlugin(MaiBotPlugin):
         result_tuple: tuple[bool, str] = (False, "")
 
         if subcommand == "":
-            result_tuple = (False, "❌缺少参数，请输入/mcstatus help查询用法")
+            result_tuple = await self._command_func._handle_help()
         elif subcommand == "motd":
             result_tuple = await self._command_func._handle_motd(server_addr=arg1, group_id=group_id, user_id=user_id)
         elif subcommand == "add":
@@ -155,10 +154,13 @@ class MCStatusPlugin(MaiBotPlugin):
         # 根据返回的 tuple 判断发送图片还是文本
         is_image, data = result_tuple
         if is_image:
-            # send.image 需要 base64 字符串，data 是文件路径
-            with open(data, "rb") as f:
-                img_b64 = base64.b64encode(f.read()).decode("ascii")
-            await self.ctx.send.image(img_b64, stream_id)
+            try:
+                # send.image 需要 base64 字符串，data 是文件路径
+                with open(data, "rb") as f:
+                    img_b64 = base64.b64encode(f.read()).decode("ascii")
+                await self.ctx.send.image(img_b64, stream_id)
+            finally:
+                self._command_func.release_image_path(data)
         else:
             await self.ctx.send.text(data, stream_id)
 

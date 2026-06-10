@@ -1,3 +1,4 @@
+from PIL import Image, ImageDraw, ImageFilter, ImageFont, ImageOps
 import asyncio
 import base64
 import datetime
@@ -5,8 +6,6 @@ import io
 import logging
 import os
 import re
-
-from PIL import Image, ImageDraw, ImageFilter, ImageFont, ImageOps
 
 logger = logging.getLogger(__name__)
 
@@ -401,9 +400,6 @@ class Draw:
             footer_base_y = H - margin - 60
             draw_right_align(footer_text_1, footer_base_y, font_footer, self.CUTE_THEME["text_footer"])
             draw_right_align(footer_text_2, footer_base_y + 25, font_footer, self.CUTE_THEME["text_footer"])
-
-            # 释放临时图片
-            del temp_img, temp_draw
 
             await loop.run_in_executor(None, bg.save, self.output_path)
             return True, self.output_path

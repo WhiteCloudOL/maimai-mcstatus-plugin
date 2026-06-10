@@ -1,10 +1,9 @@
+from mcstatus import JavaServer
 import glob
 import logging
 import os
 import time
 import uuid
-
-from mcstatus import JavaServer
 
 from .data_manager import DataManager
 from .draw import Draw
@@ -24,27 +23,55 @@ class CommandFunc:
         self.bg_name = bg_name
         self.max_temp = max_temp
         self.divide_data = divide_data
+        self._active_image_paths: set[str] = set()
 
         self.images_dir = os.path.join(plugin_data_dir, "images")
         os.makedirs(self.images_dir, exist_ok=True)
 
-    def _get_new_image_path(self) -> str:
-        """生成新的图片路径并清理旧缓存"""
-        # 清理旧缓存
+    def _cleanup_cached_images(self, cache_limit: int | None = None) -> None:
+        """按缓存上限清理旧图片，跳过正在发送的图片。"""
+        if cache_limit is None:
+            cache_limit = max(self.max_temp, 0)
+
         existing_images = glob.glob(os.path.join(self.images_dir, "*.png"))
-        if len(existing_images) >= self.max_temp:
-            # 按修改时间排序，最旧的在前面
-            existing_images.sort(key=os.path.getmtime)
-            # 删除多余的图片
-            for img_to_del in existing_images[:len(existing_images) - self.max_temp + 1]:
-                try:
-                    os.remove(img_to_del)
-                except Exception as e:
-                    logger.error(f"清理缓存图片失败: {e}")
+        if len(existing_images) <= cache_limit:
+            return
+
+        # 按修改时间排序，最旧的在前面
+        existing_images.sort(key=os.path.getmtime)
+        delete_count = len(existing_images) - cache_limit
+        for img_to_del in existing_images:
+            if delete_count <= 0:
+                break
+            if os.path.abspath(img_to_del) in self._active_image_paths:
+                continue
+            try:
+                os.remove(img_to_del)
+                delete_count -= 1
+            except Exception as e:
+                logger.error(f"清理缓存图片失败: {e}")
+
+    def _get_new_image_path(self) -> str:
+        """生成新的图片路径并清理旧缓存。"""
+        # 生成前预留一个缓存名额，发送完成后会再次按 max_temp 收敛。
+        self._cleanup_cached_images(max(self.max_temp - 1, 0))
 
         # 生成新路径
         new_filename = f"mcstatus_{int(time.time())}_{uuid.uuid4().hex[:8]}.png"
-        return os.path.join(self.images_dir, new_filename)
+        new_path = os.path.join(self.images_dir, new_filename)
+        self._active_image_paths.add(os.path.abspath(new_path))
+        return new_path
+
+    def release_image_path(self, image_path: str, remove_file: bool = False) -> None:
+        """图片发送结束后解除占用并清理缓存。"""
+        abs_image_path = os.path.abspath(image_path)
+        self._active_image_paths.discard(abs_image_path)
+        if remove_file and os.path.exists(abs_image_path):
+            try:
+                os.remove(abs_image_path)
+            except Exception as e:
+                logger.error(f"清理失败图片失败: {e}")
+        self._cleanup_cached_images()
 
     @property
     def is_global(self) -> bool:
@@ -119,29 +146,35 @@ class CommandFunc:
             return None
 
     async def _generate_image_response(self, data_map: dict) -> tuple[bool, str]:
-        drawer = Draw(output_path=self._get_new_image_path(), bg_path=self.bg_name)
+        image_path = self._get_new_image_path()
+        drawer = Draw(output_path=image_path, bg_path=self.bg_name)
         success, result = await drawer.draw_card(data_map, self.font_name)
         if success:
             return True, result
         else:
+            self.release_image_path(image_path, remove_file=True)
             return False, f"❌ 图片生成失败: {result}"
 
     # 帮助图片生成专用入口
     async def _generate_help_response(self, data_map: dict) -> tuple[bool, str]:
-        drawer = Draw(output_path=self._get_new_image_path(), bg_path=self.bg_name)
+        image_path = self._get_new_image_path()
+        drawer = Draw(output_path=image_path, bg_path=self.bg_name)
         success, result = await drawer.draw_help(data_map, self.font_name)
         if success:
             return True, result
         else:
+            self.release_image_path(image_path, remove_file=True)
             return False, f"❌ 帮助生成失败: {result}"
 
     # 列表图片生成专用入口
     async def _generate_list_response(self, data_map: dict) -> tuple[bool, str]:
-        drawer = Draw(output_path=self._get_new_image_path(), bg_path=self.bg_name)
+        image_path = self._get_new_image_path()
+        drawer = Draw(output_path=image_path, bg_path=self.bg_name)
         success, result = await drawer.draw_list(data_map, self.font_name)
         if success:
             return True, result
         else:
+            self.release_image_path(image_path, remove_file=True)
             return False, f"❌ 列表生成失败: {result}"
 
     async def _handle_motd(self, server_addr: str, group_id: str | None = None, user_id: str | None = None) -> tuple[bool, str]:
