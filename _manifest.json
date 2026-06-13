@@ -1,6 +1,6 @@
 {
   "manifest_version": 2,
-  "version": "1.0.0",
+  "version": "1.0.1",
   "name": "Minecraft 服务器状态查询",
   "description": "查询 Minecraft 服务器状态，支持 MOTD、在线人数、延迟等，并生成精美的卡片图片",
   "author": {
